@@ -56,7 +56,6 @@ echo "Syncing code..."
 python3 ./repo sync -c -j"${REPO_JOBS}"
 echo "Pulling LFS files..."
 python3 ./repo forall -c 'git lfs pull'
-cd "${ROOT_DIR}"
 
 # # 切换 LLVM 分支 （可选）
 # echo "Switching LLVM branch to ${LLVM_BRANCH}..."
@@ -72,7 +71,7 @@ cd "${ROOT_DIR}"
 # 环境准备
 echo "Running env_prepare.sh..."
 bash "${LLVM_ROOT}/toolchain/llvm-project/llvm-build/env_prepare.sh"
-
+cd "${ROOT_DIR}"
 
 #############################################
 # Part 2: Docker 构建 + 打包
