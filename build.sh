@@ -4,6 +4,9 @@
 
 set -e
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LLVM_ROOT="${ROOT_DIR}/llvm"
+
 #############################################
 # 配置项
 #############################################
@@ -29,32 +32,35 @@ MANIFEST_XML="mpcore-llvm-kmp_next-19.1.4-0.2.xml"
 #############################################
 
 echo "============================================"
-echo "Part 1: 代码同步"
+echo "Part 1: 代码同步 (目录: ${LLVM_ROOT})"
 echo "============================================"
 
+mkdir -p "${LLVM_ROOT}"
+
 # 获取 repo 工具
-curl -sfL "https://gitee.com/oschina/repo/raw/fork_flow/repo-py3" -o ./repo
+curl -sfL "https://gitee.com/oschina/repo/raw/fork_flow/repo-py3" -o "${LLVM_ROOT}/repo"
 
 # 同步代码
-echo "Initializing repo..."
 init_args=(
   -u "${MANIFEST_URL}"
   -b "${MANIFEST_BRANCH}"
   -m "${MANIFEST_XML}"
   --depth=1
 )
-python3 ./repo init "${init_args[@]}"
-
-echo "Syncing code..."
 REPO_JOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
-python3 ./repo sync -c -j"${REPO_JOBS}"
 
+cd "${LLVM_ROOT}"
+echo "Initializing repo..."
+python3 ./repo init "${init_args[@]}"
+echo "Syncing code..."
+python3 ./repo sync -c -j"${REPO_JOBS}"
 echo "Pulling LFS files..."
 python3 ./repo forall -c 'git lfs pull'
+cd "${ROOT_DIR}"
 
 # # 切换 LLVM 分支 （可选）
 # echo "Switching LLVM branch to ${LLVM_BRANCH}..."
-# cd toolchain/llvm-project
+# cd "${LLVM_ROOT}/toolchain/llvm-project"
 
 # git remote add "${LLVM_REMOTE}" "${LLVM_REMOTE_URL}" 2>/dev/null || true
 # git fetch "${LLVM_REMOTE}"
@@ -65,7 +71,7 @@ python3 ./repo forall -c 'git lfs pull'
 
 # 环境准备
 echo "Running env_prepare.sh..."
-bash toolchain/llvm-project/llvm-build/env_prepare.sh
+bash "${LLVM_ROOT}/toolchain/llvm-project/llvm-build/env_prepare.sh"
 
 
 #############################################
@@ -76,11 +82,12 @@ echo "============================================"
 echo "Part 2: Docker 构建 + 打包"
 echo "============================================"
 
-mkdir -p packages
-cp package-llvm.sh packages/
+mkdir -p "${LLVM_ROOT}/packages"
+cp "${ROOT_DIR}/build-llvm.sh" "${LLVM_ROOT}/"
+cp "${ROOT_DIR}/package-llvm.sh" "${LLVM_ROOT}/packages/"
 
 docker run --rm \
-    -v "$(pwd)":/llvm \
+    -v "${LLVM_ROOT}":/llvm \
     -w /llvm \
     "${DOCKER_IMAGE}" \
     /bin/bash -c "
@@ -89,15 +96,14 @@ docker run --rm \
         git config --global --add safe.directory /llvm/build
         git config --global user.email "ci@ci.ci"
         git config --global user.name "ci"
-        cd /llvm/
-        bash build-llvm.sh
-        cd /llvm/packages
+        bash ./build-llvm.sh
+        cd ./packages
         bash package-llvm.sh
     "
 
 echo "============================================"
 echo "构建完成！"
-echo "产物位置: packages/target_location/"
+echo "产物位置: llvm/packages/target_location/"
 echo "============================================"
 
-ls -lh packages/target_location/
+ls -lh "${LLVM_ROOT}/packages/target_location/"
