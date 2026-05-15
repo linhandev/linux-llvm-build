@@ -1,5 +1,5 @@
 #!/bin/bash
-# Linux-only build wrapper - 基于 build.sh，跳过 OHOS 目标
+# Linux-only build wrapper - 基于 build.sh，跳过 windows 部分
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="$SCRIPT_DIR"
@@ -55,9 +55,6 @@ build_llvm() {
         --no-build-mipsel \
         --no-build lldb-server \
         --no-build windows \
-        --no-build-arm \
-        --no-build-aarch64 \
-        --no-build-x86_64 \
         --compression-format gz \
         $LTO_FLAG
 }
